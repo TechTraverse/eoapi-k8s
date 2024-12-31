@@ -1,3 +1,4 @@
+{{ include "eoapi.validateTempDB" . }}
 {{- range $serviceName, $v := .Values -}}
 {{- if (or (eq $serviceName "raster") (eq $serviceName "stac") (eq $serviceName "vector")) }}
 {{- if index $v "enabled" }}
@@ -29,9 +30,9 @@ spec:
         name: {{ $serviceName }}
         command:
           {{- toYaml (index $v "command") | nindent 10 }}
-          {{- if (and ($.Values.ingress.className) (eq $.Values.ingress.className "nginx") (not $.Values.testing)) }}
+          {{- if (and ($.Values.ingress.className) (or (eq $.Values.ingress.className "nginx") (eq $.Values.ingress.className "traefik")) (not $.Values.testing)) }}
           - "--root-path=/{{ $serviceName }}"
-          {{- else if (and ($.Values.ingress.className) (eq $.Values.ingress.className "nginx") ($.Values.testing)) }}
+          {{- else if (and ($.Values.ingress.className) (or (eq $.Values.ingress.className "nginx") (eq $.Values.ingress.className "traefik")) ($.Values.testing)) }}
           - "--root-path=/{{ $serviceName }}{{ $.Release.Name }}"
           {{- end }}{{/* needed for proxies and path rewrites on NLB */}}
         livenessProbe:
@@ -49,15 +50,27 @@ spec:
         ports:
           - containerPort: {{ $.Values.service.port }}
         resources:
-          limits:
-            cpu: {{ index $v "settings" "resources" "limits" "cpu" }}
-            memory: {{ index $v "settings" "resources" "limits" "memory" }}
-          requests:
-            cpu: {{ index $v "settings" "resources" "requests" "cpu" }}
-            memory: {{ index $v "settings" "resources" "requests" "memory" }}
+          {{- toYaml (index $v "settings" "resources") | nindent 10 }}
+        {{- if $.Values.postgrescluster.enabled }}
+        env:
+          {{- include "eoapi.pgstacSecrets" $ | nindent 12 }}
+        {{- end }}
         envFrom:
-          - configMapRef:
-              name: {{ $serviceName }}-envvar-configmap-{{ $.Release.Name }}
+          # NOTE: there's no reason we need to use a `ConfigMap` or `Secret` here to get os env vars into the pod.
+          # we could just template them out here immediately with `value: $_` but this allows us
+          # to store them in k8s intermediately and change them and then bounce deploys if needed
+        - configMapRef:
+            name: {{ $serviceName }}-envvar-configmap-{{ $.Release.Name }}
+        {{- if $.Values.db.enabled }}
+        - secretRef:
+            name: pgstac-secrets-{{ $.Release.Name }}
+        {{- end }}
+        {{- if index $v "settings" "envSecrets" }}
+        {{- range $secret := index $v "settings" "envSecrets" }}
+        - secretRef:
+            name: {{ $secret }}
+        {{- end }}
+        {{- end }}
 ---
 {{/* END: if index $v "enabled" */}}
 {{- end }}

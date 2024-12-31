@@ -77,6 +77,12 @@ Create pgstac host string depending if .Values.testing
 Create pgstac host string depending if .Values.testing
 */}}
 {{- define "eoapi.pgstacHostName" -}}
+{{- if .Values.testing }}
+{{- printf "%s-%s" "pgstacbootstrap" .Release.Name }}
+{{- else }}
+{{/* need to match what is default in values.yamls */}}
+{{- printf "%s" "pgstacbootstrap" }}
+{{- end }}
 {{- end }}
 
 {{/*
@@ -204,5 +210,11 @@ validate:
 that you cannot have db.enabled and (postgrescluster.enabled or pgstacBootstrap.enabled)
 */}}
 {{- define "eoapi.validateTempDB" -}}
+{{- if and (.Values.db.enabled) (.Values.postgrescluster.enabled) -}}
+  {{- fail "you cannot use have both db.enabled and postgresclsuter.enabled" -}}
+{{- end -}}
+{{- if and (.Values.db.enabled) (.Values.pgstacBootstrap.enabled) -}}
+  {{- fail "you cannot use have both db.enabled and pgstacBootstrap.enabled" -}}
+{{- end -}}
 
 {{- end -}}
