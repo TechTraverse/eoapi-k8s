@@ -3,14 +3,14 @@ entries:
   eoapi:
   - apiVersion: v2
     appVersion: 0.4.0
-    created: "2024-12-31T05:38:33.766634441Z"
+    created: "2024-12-31T06:55:01.818187118Z"
     description: Create a full Earth Observation API with Metadata, Raster and Vector
       services
-    digest: c45347c10cb7d1810cce21446133323334ca25c5466b23ef62b517cbba7feea3
+    digest: f22cd63d1b162d7df9b2923e3880759de0f04b247632612425113610c6dc664c
     kubeVersion: '>=1.23.0-0'
     name: eoapi
     type: application
     urls:
     - https://techtraverse.github.io/eoapi-k8s/eoapi-0.1.0.tgz
-    version: 0.5.2
-generated: "2024-12-31T05:38:33.765264099Z"
+    version: 0.1.0
+generated: "2024-12-31T06:55:01.816060544Z"
