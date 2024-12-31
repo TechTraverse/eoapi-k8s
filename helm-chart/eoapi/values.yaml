@@ -43,131 +43,6 @@ ingress:
 
 
 ######################
-# DATABASE
-######################
-comment_db: >
-  We use the crunchydata postgres operator/cluster charts as the k8s internal HA solution for eoapi.
-  Those charts are therefore listed as a dependency of this chart in `Chart.yaml`.
-
-  0. make sure to install the operator first `helm install --set disable_check_for_upgrades=true pgo oci://registry.developers.crunchydata.com/crunchydata/pgo`
-  1. it will create a postgres cluster: see `postgrescluster.instances` spec below
-  2. will will also create user credentials and mount their secrets: see `postgrescluster.users` spec below
-
-  The `postgrescluster` specs below are pass-through values to configure those separate
-  charts. For more information read https://access.crunchydata.com/documentation/postgres-operator/latest
-
-# DEPRECATED: this is the backward compatible way we originally did things
-# and a temporary solution for EOEPCA. Since disabled by default most people SHOULD NOT
-# use this option as it won't be talked about explicitly in the docs
-db:
-  enabled: false
-  image:
-    name: ghcr.io/stac-utils/pgstac
-    tag: v0.8.2
-  command:
-    - "postgres"
-    - "-N"
-    - "500"
-  # toggle to true||false if you want the db test fixtures loaded
-  enable_data_fixtures: true
-  storageClassName: ""
-  accessModes:
-    - ReadWriteOnce
-  settings:
-    resources:
-      requests:
-        storage: "100Mi"
-        cpu: "512m"
-        memory: "1024Mi"
-      limits:
-        cpu: "512m"
-        memory: "1024Mi"
-    secrets:
-      POSTGRES_DB: "postgis"
-      POSTGRES_USER: ""
-      POSTGRES_PASSWORD: ""
-      POSTGRES_PORT: "5432"
-      POSTGRES_HOST: "pgstac"
-      POSTGRES_HOST_READER: "pgstac"
-      POSTGRES_HOST_WRITER: "pgstac"
-      DB_MIN_CONN_SIZE: "1"
-      DB_MAX_CONN_SIZE: "15"
-      # default connect: https://www.postgresql.org/docs/current/libpq-envars.html
-      PGDATA: "/data/pgdata"
-      PGUSER: ""
-      PGPASSWORD: ""
-      PGDATABASE: "postgis"
-
-# this is declared as a dependency of eoapi in helm-chart/eoapi/Chart.yaml
-postgrescluster:
-  enabled: true
-  postgresVersion: 16
-  postGISVersion: 3.4
-  pgBouncerReplicas: 1
-  monitoring: false
-  instances:
-  - name: eoapi
-    replicas: 1
-    dataVolumeClaimSpec:
-      accessModes:
-      - "ReadWriteOnce"
-      resources:
-        requests:
-          storage: "10Gi"
-          cpu: "1024m"
-          memory: "3048Mi"
-  # https://access.crunchydata.com/documentation/postgres-operator/latest/architecture/user-management
-  users:
-    # `postgres` always is a `SUPERUSER` and cannot be adjusted with `options` flag
-    # we use this block here to create secrets for the `postgres` user that we can mount and lookup
-    - name: postgres
-      databases:
-        - eoapi
-        - postgres
-    # if you try to grant `options: 'SUPERUSER'` below to your eoapi service user
-    # then they will not be able to connect through the pgbouncer connection pooler, so be aware
-    # https://access.crunchydata.com/documentation/crunchy-postgres-containers/2.4.2/container-specifications/crunchy-pgbouncer/
-    # this user is currently unprivileged and the `pgstacBootstrap` container below will grant privileges
-    # when it boots via the `postgres` superuser above.
-    # see `/helm-chart/eoapi/templates/pgstacbootstrap/configmap.yaml:initdb-sh-config`
-    - name: eoapi
-      databases:
-        - eoapi
-        - postgres
-      # default `password.type` is ASCII which follows the character set US-ASCII
-      # but which can contain characters that `asyncpg` dislikes
-      # see https://github.com/MagicStack/asyncpg/issues/1151
-      password:
-        type: AlphaNumeric
-
-# `pgstacBootstrap` is a pod that by default runs pgstac schema migrations
-# and optionally loads some fixtures for testing and examples
-# using the LOAD_FIXTURES env var below
-pgstacBootstrap:
-  enabled: true
-  image:
-    name: ghcr.io/stac-utils/pgstac
-    tag: v0.8.2
-  command:
-    - "sh"
-  args:
-    - "/opt/initdb/run-migrate-and-load.sh"
-  settings:
-    resources:
-      requests:
-        cpu: "512m"
-        memory: "1024Mi"
-      limits:
-        cpu: "512m"
-        memory: "1024Mi"
-    envVars:
-      # toggle to "false" if you don't want fixtures default loaded
-      LOAD_FIXTURES: "true"
-      # toggle to `true` if you want to keep the job running as db jumpbox
-      KEEP_ALIVE: "false"
-
-
-######################
 # API SERVICES
 ######################
 raster:
@@ -187,21 +62,18 @@ raster:
         stabilizationWindowSeconds: 0
     targets:
       # matches `type` value above unless `type: "both"` is selected
-      cpu: 75
-      # 'm' units here represents generic milli (one-thousandth) unit instead of 'decimal'
-      # https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/#quantities
-      # so when the average unit among these pods is <requestRate>/1000 then scale
-      # you can watch the actual/target in real time using `kubectl get hpa/<name>`
-      requestRate: 100000m
+      cpu: 85
+      requestRate: 10000
   image:
     name: ghcr.io/stac-utils/titiler-pgstac
-    tag: uvicorn-1.4.0
+    tag: uvicorn-1.2.0
   command:
     - "uvicorn"
     - "titiler.pgstac.main:app"
     - "--host=$(HOST)"
     - "--port=$(PORT)"
   settings:
+    timeout: 10
     # https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
     resources:
       limits:
@@ -214,6 +86,7 @@ raster:
       ##############
       # titiler
       ##############
+      CPL_VSIL_CURL_ALLOWED_EXTENSIONS: ".tif,.TIF,.tiff"
       GDAL_CACHEMAX: "200"  # 200 mb
       GDAL_DISABLE_READDIR_ON_OPEN: "EMPTY_DIR"
       GDAL_INGESTED_BYTES_AT_OPEN: "32768"
@@ -229,7 +102,7 @@ raster:
       HOST: "0.0.0.0"
       PORT: "8080"
       # https://www.uvicorn.org/settings/#production
-      WEB_CONCURRENCY: "5"
+      WEB_CONCURRENCY: "10"
 
 stac:
   enabled: true
@@ -248,12 +121,8 @@ stac:
         stabilizationWindowSeconds: 0
     targets:
       # matches `type` value above unless `type: "both"` is selected
-      cpu: 75
-      # 'm' units here represents generic milli (one-thousandth) unit instead of 'decimal'
-      # https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/#quantities
-      # so when the average unit among these pods is <requestRate>/1000 then scale
-      # you can watch the actual/target in real time using `kubectl get hpa/<name>`
-      requestRate: 100000m
+      cpu: 85
+      requestRate: 15000
   image:
     name: ghcr.io/stac-utils/stac-fastapi-pgstac
     tag: 2.4.9
@@ -263,6 +132,7 @@ stac:
     - "--host=$(HOST)"
     - "--port=$(PORT)"
   settings:
+    timeout: 10
     # https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
     resources:
       limits:
@@ -278,7 +148,7 @@ stac:
       HOST: "0.0.0.0"
       PORT: "8080"
       # https://www.uvicorn.org/settings/#production
-      WEB_CONCURRENCY: "5"
+      WEB_CONCURRENCY: "10"
 
 vector:
   enabled: true
@@ -297,12 +167,8 @@ vector:
         stabilizationWindowSeconds: 0
     targets:
       # matches `type` value above unless `type: "both"` is selected
-      cpu: 75
-      # 'm' units here represents generic milli (one-thousandth) unit instead of 'decimal'
-      # https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/#quantities
-      # so when the average unit among these pods is <requestRate>/1000 then scale
-      # you can watch the actual/target in real time using `kubectl get hpa/<name>`
-      requestRate: 100000m
+      cpu: 85
+      requestRate: 15000
   image:
     name: ghcr.io/developmentseed/tipg
     tag: uvicorn-0.6.1
@@ -312,6 +178,7 @@ vector:
     - "--host=$(HOST)"
     - "--port=$(PORT)"
   settings:
+    timeout: 10
     # https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
     resources:
       limits:
@@ -324,15 +191,14 @@ vector:
       ##############
       # tipg
       ##############
-      TIPG_CATALOG_TTL: "300"
-      TIPG_DEBUG: "True"
+      TIPG_CATALOG_TTL: "0"
       ##############
       # uvicorn
       ##############
       HOST: "0.0.0.0"
       PORT: "8080"
       # https://www.uvicorn.org/settings/#production
-      WEB_CONCURRENCY: "5"
+      WEB_CONCURRENCY: "10"
 
 docServer:
   enabled: true

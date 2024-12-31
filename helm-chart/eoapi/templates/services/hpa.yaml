@@ -25,8 +25,7 @@ spec:
       target:
         type: Utilization
         averageUtilization: {{ index $v "autoscaling" "targets" "cpu" }}
-  {{- end }}
-  {{- if or (eq (index $v "autoscaling" "type") "requestRate") (eq (index $v "autoscaling" "type") "both") }}
+  {{- else if or (eq (index $v "autoscaling" "type") "requestRate") (eq (index $v "autoscaling" "type") "both") }}
   # NOTE: 'Object' are custom metrics using third-party plugins such as prometheus + prometheus-adapter
   # SEE: ../../../docs/autoscaling.md
   - type: Object
