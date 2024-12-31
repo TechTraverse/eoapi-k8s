@@ -4,7 +4,7 @@ ingress:
   enabled: true
   className: "traefik"
 pgstacBootstrap:
-  enabled: true
+  enabled: false
   settings:
     resources:
       requests:
