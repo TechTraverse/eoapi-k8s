@@ -17,7 +17,7 @@ ingress:
     secretName: eoapi-tls
 
 pgstacBootstrap:
-  enabled: true
+  enabled: false
   settings:
     resources:
       requests:
