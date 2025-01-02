@@ -15,6 +15,37 @@ pgdb = PgstacDB(dsn=os.environ['PGADMIN_URI'], debug=True)
 print(f"[ VERSION ]: {pgdb.version=}")
 Migrate(pgdb).run_migration(pgdb.version)
 
+
+create_user_flag = os.environ.get("PG_CREATE_USERS", "false").lower() == "true"
+if create_user_flag:
+    # Create the user if not exists
+    with psycopg.connect(admin_db_conninfo, autocommit=True) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                sql.SQL(
+                    """
+                    DO $do$
+                    BEGIN
+                        IF NOT EXISTS (
+                            SELECT
+                            FROM pg_catalog.pg_roles
+                            WHERE rolname = {username_str}
+                        )
+                        THEN
+                            CREATE ROLE {username} WITH LOGIN;
+                            -- If a password is desired:
+                            -- ALTER ROLE {username} WITH PASSWORD {password_str};
+                        END IF;
+                    END
+                    $do$;
+                    """
+                ).format(
+                    username=sql.Identifier(os.environ["POSTGRES_USER"]),
+                    username_str=sql.Literal(os.environ["POSTGRES_USER"]),
+                    password_str=sql.Literal(os.environ["POSTGRES_PASSWORD"]),
+                )
+            )
+
 with psycopg.connect(admin_db_conninfo, autocommit=True) as conn:
     with conn.cursor() as cur:
         # NOTE: most of these should've been set up by postgresql operator
