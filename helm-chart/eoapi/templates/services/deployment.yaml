@@ -25,7 +25,7 @@ spec:
       labels:
         app: {{ $serviceName }}-{{ $.Release.Name }}
     spec:
-      serviceAccountName: {{ include "eoapi.serviceAccountName" . }}
+      serviceAccountName: {{ index $v "serviceAccountName" | default (include "eoapi.serviceAccountName" $) }}
       containers:
       - image: {{ index $v "image" "name" }}:{{ index $v "image" "tag" }}
         name: {{ $serviceName }}
