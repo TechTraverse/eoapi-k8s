@@ -34,7 +34,7 @@ spec:
           {{- if (and ($.Values.ingress.className) (or (eq $.Values.ingress.className "nginx") (eq $.Values.ingress.className "traefik")) (not $.Values.testing)) }}
           - "--root-path=/{{ $serviceName }}"
           {{- else if (and ($.Values.ingress.className) (or (eq $.Values.ingress.className "nginx") (eq $.Values.ingress.className "traefik")) ($.Values.testing)) }}
-          - "--root-path=/{{ $serviceName }}{{ $.Release.Name }}"
+          # - "--root-path=/{{ $serviceName }}{{ $.Release.Name }}"
           {{- end }}{{/* needed for proxies and path rewrites on NLB */}}
         livenessProbe:
           httpGet:
