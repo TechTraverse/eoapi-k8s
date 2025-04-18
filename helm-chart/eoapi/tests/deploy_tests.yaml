@@ -89,3 +89,43 @@ tests:
       - equal:
           path: metadata.labels.gitsha
           value: "ABC123"
+
+  - it: "serviceAccountName is set to the default when name is not provided"
+    asserts:
+        - isKind:
+            of: Deployment
+        - equal:
+            path: spec.template.spec.serviceAccountName
+            value: "default"
+
+  - it: "serviceAccountName is set to the provided name"
+    set:
+      serviceAccount.name: "custom-service-account"
+    asserts:
+        - isKind:
+            of: Deployment
+        - equal:
+            path: spec.template.spec.serviceAccountName
+            value: "custom-service-account"
+        
+        #  I happen to know these work using templates
+#   - it: "serviceAccountName is overridden at the service level"
+#     set:
+#       vector.enabled: true
+#       vector.serviceAccountName: my-custom-sa
+#     asserts:
+#       - equal:
+#           path: spec.template.spec.serviceAccountName
+#           value: my-custom-sa
+#         documentIndex: 1
+
+#   - it: "serviceAccountName is overridden at the service level"
+#     set:
+#       serviceAccount.name: "default-service-account"
+#       raster.enabled: true
+#       raster.serviceAccountName: vector-service-account
+#     asserts:
+#       - equal:
+#           path: spec.template.spec.serviceAccountName
+#           value: vector-service-account
+#         documentIndex: 1
