@@ -31,26 +31,26 @@ spec:
     - http:
         paths:
           {{- range $serviceName, $v := .Values }}
-          {{- if (or (eq $serviceName "raster") (eq $serviceName "stac") (eq $serviceName "vector")) }}
-          {{- if (and (index $v "enabled") (not $.Values.testing)) }}
-          - pathType: Prefix
-            path: "/{{ $serviceName }}(/|$)(.*)"
-            backend:
-              service:
-                name: {{ $serviceName }}
-                port:
-                  number: {{ $.Values.service.port }}
-          {{- else if (and (index $v "enabled") ($.Values.testing)) }}
-          - pathType: Prefix
-            path: "/{{ $serviceName }}{{ $.Release.Name }}(/|$)(.*)"
-            backend:
-              service:
-                name: {{ $serviceName }}-{{ $.Release.Name }}
-                port:
-                  number: {{ $.Values.service.port }}
-          {{- end }}{{/* END: if index $v "enabled" */}}
-          {{- end }}{{/* END: if (or (eq $serviceName "raster") (eq $serviceName "stac") (eq $serviceName "vector")) */}}
-          {{- end }}{{/* END: range $serviceName, $v := .Values*/}}
+          # {{- if (or (eq $serviceName "raster") (eq $serviceName "stac") (eq $serviceName "vector")) }}
+          # {{- if (and (index $v "enabled") (not $.Values.testing)) }}
+          # - pathType: Prefix
+          #   path: "/{{ $serviceName }}(/|$)(.*)"
+          #   backend:
+          #     service:
+          #       name: {{ $serviceName }}
+          #       port:
+          #         number: {{ $.Values.service.port }}
+          # {{- else if (and (index $v "enabled") ($.Values.testing)) }}
+          # - pathType: Prefix
+          #   path: "/{{ $serviceName }}{{ $.Release.Name }}(/|$)(.*)"
+          #   backend:
+          #     service:
+          #       name: {{ $serviceName }}-{{ $.Release.Name }}
+          #       port:
+          #         number: {{ $.Values.service.port }}
+          # {{- end }}{{/* END: if index $v "enabled" */}}
+          # {{- end }}{{/* END: if (or (eq $serviceName "raster") (eq $serviceName "stac") (eq $serviceName "vector")) */}}
+          # {{- end }}{{/* END: range $serviceName, $v := .Values*/}}
           {{- if (and (not $.Values.testing) (.Values.docServer.enabled)) }}
           - pathType: Prefix
             path: /(/|$)
