@@ -29,8 +29,8 @@ spec:
       containers:
       - image: {{ index $v "image" "name" }}:{{ index $v "image" "tag" }}
         name: {{ $serviceName }}
-        # command:
-        #   {{- toYaml (index $v "command") | nindent 10 }}
+        command:
+          {{- toYaml (index $v "command") | nindent 10 }}
         #   {{- if (and ($.Values.ingress.className) (or (eq $.Values.ingress.className "nginx") (eq $.Values.ingress.className "traefik")) (not $.Values.testing)) }}
         #    - "--root-path=/{{ $serviceName }}"
         #   {{- else if (and ($.Values.ingress.className) (or (eq $.Values.ingress.className "nginx") (eq $.Values.ingress.className "traefik")) ($.Values.testing)) }}
